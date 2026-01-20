@@ -20,6 +20,10 @@ func (p *problem) operate() int {
 }
 
 func mul(l []int) int {
+	if len(l) == 0 {
+		return 0
+	}
+
 	prod := 1
 	for _, v := range l {
 		prod *= v
@@ -32,6 +36,15 @@ func sum(l []int) (total int) {
 		total += v
 	}
 	return
+}
+
+func all(l []byte, b byte) bool {
+	for _, v := range l {
+		if v != b {
+			return false
+		}
+	}
+	return true
 }
 
 func filter_whitespace(strs []string) []string {
@@ -89,16 +102,11 @@ func parse_problems_vertical(input *os.File) []problem {
 	problems := make([]problem, 0)
 
 	i := 0
-	dig_i := 0
-	spaces := 1
+	transpose := make([][]byte, 0)
 	for {
 		char, err := reader.ReadByte()
 		if err != nil {
 			break
-		}
-
-		if i >= len(problems) {
-			problems = append(problems, problem{ []int{}, mul })
 		}
 
 		if char == '\n' {
@@ -106,28 +114,36 @@ func parse_problems_vertical(input *os.File) []problem {
 			continue
 		}
 
-		if char == ' ' {
-			if dig_i > 0 {
-				i++
-				dig_i = 0
-				spaces = 0
-			}
-			spaces++
-		} else if char == '+' || char == '*' {
-			if char == '+' {
-				problems[i].operator = sum
-			}
-			i++
-		} else {
-			dig_idx := dig_i + spaces - 1
-			for dig_idx >= len(problems[i].values) {
-				problems[i].values = append(problems[i].values, 0)
-			}
-			v := int(char) - 48 // Magic number to convert from byte to int
-			problems[i].values[dig_idx] = 10*problems[i].values[dig_idx] + v
-			dig_i++
+		if i >= len(transpose) {
+			transpose = append(transpose, []byte{})
 		}
+
+		transpose[i] = append(transpose[i], char)
+		i++
 	}
+
+	prob := problem{ []int{}, sum }
+	for _, col := range transpose {
+		if all(col, ' ') {
+			problems = append(problems, prob)
+			prob = problem{ []int{}, sum }
+			continue
+		}
+
+		val := 0
+		for _, char := range col {
+			if char == ' ' || char == '+' {
+				continue
+			} else if char == '*' {
+				prob.operator = mul
+			} else {
+				val = 10*val + (int(char) - 48)
+			}
+		}
+		prob.values = append(prob.values, val)
+	}
+	problems = append(problems, prob)
+
 	return problems
 }
 
@@ -139,15 +155,13 @@ func calc_grand_total(problems *[]problem) (total int) {
 }
 
 func main() {
-	input, err := os.Open("example")
+	input, err := os.Open("input")
 	if err != nil {
 		panic(err)
 	}
 
 	// problems := parse_problems(input)
 	problems := parse_problems_vertical(input)
-
-	fmt.Println("Found problems:", problems)
 
 	res := calc_grand_total(&problems)
 
